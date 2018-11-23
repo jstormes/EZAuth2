@@ -35,7 +35,7 @@
     ],
     "autoload": {
             "psr-4": {
-                "JStomres\\EZAuth2\\": "src/"
+                "JStormes\\EZAuth2\\": "src/"
             }
         },
         "autoload-dev": {
