@@ -46,17 +46,17 @@ class EZAuth2Middleware implements MiddlewareInterface
 
     public function __construct( string $DnsName, string $clientId, string $clientSecret, $scopes = null, LoggerInterface $log = null, bool $passOptionsThrough=false)
     {
-        $actual_link = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]";
+        //$actual_link = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]";
 
 
         $options = [
             'clientId'                => $clientId,    // The client ID assigned to you by the provider
             'clientSecret'            => $clientSecret,   // The client password assigned to you by the provider
-            'redirectUri'             => 'https://'.$DnsName.'/app',
+            'redirectUri'             => $DnsName.'/app',
             //'redirectUri'             => $actual_link,
-            'urlAuthorize'            => 'https://'.$DnsName.'/oauth2/auth',
-            'urlAccessToken'          => 'https://'.$DnsName.'/oauth2',
-            'urlResourceOwnerDetails' => 'https://'.$DnsName.'/oauth2/user/resource'
+            'urlAuthorize'            => $DnsName.'/oauth2/auth',
+            'urlAccessToken'          => $DnsName.'/oauth2',
+            'urlResourceOwnerDetails' => $DnsName.'/oauth2/user/resource'
         ];
 
         $provider = new GenericProvider($options);
@@ -162,7 +162,21 @@ class EZAuth2Middleware implements MiddlewareInterface
 
         // This is cheat and is un-testable.
         // TODO: find a way to do with the way pipe works.
-        $actual_link = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]";
+        //$actual_link = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]";
+
+        $actual_link = $request->getUri();
+        $protocol = $request->getHeaders();
+
+        $schema = $request->getHeader('upgrade-insecure-requests')[0];
+        echo "\n\n";
+        echo $actual_link;
+        echo "\n\n";
+        //print_r($protocol);
+        echo "\n\n";
+        echo $schema;
+        echo "\n\n";
+        die;
+
         $session->set('requestedUrl',$actual_link);
         $authorizationUrl = $this->provider->getAuthorizationUrl();
         $session->set(self::OAUTH2_STATE,$this->provider->getState());
@@ -252,8 +266,23 @@ class EZAuth2Middleware implements MiddlewareInterface
     {
         // https://stackoverflow.com/questions/3081042/how-to-get-ssl-certificate-info-with-curl-in-php
 
-        $g = stream_context_create (array("ssl" => array("capture_peer_cert" => true)));
-        $r = stream_socket_client("ssl://{$name}:443", $errno, $errstr, 30,
+        $url=parse_url($name);
+
+        $host = $url["host"];
+        $port = $url["port"];
+
+        // http://php.net/manual/en/context.ssl.php
+        $g = stream_context_create (
+            array("ssl" =>
+                array(
+                    "capture_peer_cert" => true,
+                    "verify_peer" => false,
+                    "verify_peer_name" => false,
+                    "allow_self_signed" => true,
+                    )
+            )
+        );
+        $r = stream_socket_client("ssl://{$host}:{$port}", $errno, $errstr, 30,
             STREAM_CLIENT_CONNECT, $g);
         $cont = stream_context_get_params($r);
 
