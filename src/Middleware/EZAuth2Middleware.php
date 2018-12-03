@@ -48,8 +48,8 @@ class EZAuth2Middleware implements MiddlewareInterface
     {
 
         $options = [
-            'clientId'                => $clientId,    // The client ID assigned to you by the provider
-            'clientSecret'            => $clientSecret,   // The client password assigned to you by the provider
+            'clientId'                => $clientId,     // The client ID assigned to you by the provider
+            'clientSecret'            => $clientSecret, // The client password assigned to you by the provider
             'redirectUri'             => $serverUri.'/app',
             'urlAuthorize'            => $serverUri.'/oauth2/auth',
             'urlAccessToken'          => $serverUri.'/oauth2',
@@ -61,9 +61,7 @@ class EZAuth2Middleware implements MiddlewareInterface
 
         $OAuth2Prototype = new OAuth2Entity();
 
-        $cert= $this->getCertFromDnsName( $serverUri);
-
-        $cryptKey = new CryptKey($cert, null, false);
+        $cryptKey = new CryptKey($serverUri, null, false);
         $OAuth2Prototype->setKey($cryptKey);
         $this->OAuth2EntityPrototype = $OAuth2Prototype;
 
@@ -216,39 +214,5 @@ class EZAuth2Middleware implements MiddlewareInterface
 
         return $accessToken;
     }
-
-    private function getCertFromDnsName($name)
-    {
-        // https://stackoverflow.com/questions/3081042/how-to-get-ssl-certificate-info-with-curl-in-php
-
-        $url=parse_url($name);
-
-        $host = $url["host"];
-        $port = $url["port"];
-
-        // http://php.net/manual/en/context.ssl.php
-        $g = stream_context_create (
-            array("ssl" =>
-                array(
-                    "capture_peer_cert" => true,
-                    "verify_peer" => false,
-                    "verify_peer_name" => false,
-                    "allow_self_signed" => true,
-                    )
-            )
-        );
-
-        if (empty($port)) {
-            $port=443;
-        }
-
-        $r = stream_socket_client("ssl://{$host}:{$port}", $errno, $errstr, 30,
-            STREAM_CLIENT_CONNECT, $g);
-        $cont = stream_context_get_params($r);
-
-        openssl_x509_export($cont['options']['ssl']['peer_certificate'], $out);
-
-        return $out;
-    }
-
+    
 }

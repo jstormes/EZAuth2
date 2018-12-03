@@ -33,10 +33,6 @@ class CryptKey
      */
     public function __construct($keyPath, $passPhrase = null, $keyPermissionsCheck = true)
     {
-        if (strpos($keyPath, 'https://') === 0) {
-            $keyPath = $this->savePublicCertToFile($keyPath);
-        }
-
         if (preg_match(self::RSA_KEY_PATTERN, $keyPath)) {
             $keyPath = $this->saveKeyToFile($keyPath);
         }
@@ -100,40 +96,6 @@ class CryptKey
         }
 
         return 'file://' . $keyPath;
-    }
-
-    private function savePublicCertToFile($name)
-    {
-        // https://stackoverflow.com/questions/3081042/how-to-get-ssl-certificate-info-with-curl-in-php
-
-        $url=parse_url($name);
-
-        $host = $url["host"];
-        $port = $url["port"];
-
-        // http://php.net/manual/en/context.ssl.php
-        $g = stream_context_create (
-            array("ssl" =>
-                array(
-                    "capture_peer_cert" => true,
-                    "verify_peer" => false,
-                    "verify_peer_name" => false,
-                    "allow_self_signed" => true,
-                )
-            )
-        );
-
-        if (empty($port)) {
-            $port = 443;
-        }
-
-        $r = stream_socket_client("ssl://{$host}:{$port}", $errno, $errstr, 30,
-            STREAM_CLIENT_CONNECT, $g);
-        $cont = stream_context_get_params($r);
-
-        openssl_x509_export($cont['options']['ssl']['peer_certificate'], $out);
-
-        return $this->saveKeyToFile($out);
     }
 
     /**
