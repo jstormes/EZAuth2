@@ -214,5 +214,5 @@ class EZAuth2Middleware implements MiddlewareInterface
 
         return $accessToken;
     }
-    
+
 }
