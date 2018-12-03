@@ -127,11 +127,27 @@ class CryptKey
             $port = 443;
         }
 
+
         $r = stream_socket_client("ssl://{$host}:{$port}", $errno, $errstr, 30,
             STREAM_CLIENT_CONNECT, $g);
+
+//        echo "\n\n";
+//        echo "errstr ".$errstr."\n\n";
+//        die;
+
+//        echo "before stream_socket_client \n";
+//        $r = stream_socket_client("ssl://test2.loopback.world:8443", $errno, $errstr, 30,
+//            STREAM_CLIENT_CONNECT, $g);
+
+
+//        echo "before stream_context_get_params\n";
         $cont = stream_context_get_params($r);
 
+
+//        echo "openssl_x509_export\n";
         openssl_x509_export($cont['options']['ssl']['peer_certificate'], $out);
+
+
 
         return $this->saveKeyToFile($out);
     }
