@@ -44,28 +44,24 @@ class EZAuth2Middleware implements MiddlewareInterface
     /** @var bool  */
     private $passOptionsThrough;
 
-    public function __construct( string $DnsName, string $clientId, string $clientSecret, $scopes = null, LoggerInterface $log = null, bool $passOptionsThrough=false)
+    public function __construct(string $serverUri, string $clientId, string $clientSecret, $scopes = null, LoggerInterface $log = null, bool $passOptionsThrough=false)
     {
-        //$actual_link = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]";
-
 
         $options = [
             'clientId'                => $clientId,    // The client ID assigned to you by the provider
             'clientSecret'            => $clientSecret,   // The client password assigned to you by the provider
-            'redirectUri'             => $DnsName.'/app',
-            //'redirectUri'             => $actual_link,
-            'urlAuthorize'            => $DnsName.'/oauth2/auth',
-            'urlAccessToken'          => $DnsName.'/oauth2',
-            'urlResourceOwnerDetails' => $DnsName.'/oauth2/user/resource'
+            'redirectUri'             => $serverUri.'/app',
+            'urlAuthorize'            => $serverUri.'/oauth2/auth',
+            'urlAccessToken'          => $serverUri.'/oauth2',
+            'urlResourceOwnerDetails' => $serverUri.'/oauth2/user/resource'
         ];
 
         $provider = new GenericProvider($options);
         $this->provider = $provider;
 
-
         $OAuth2Prototype = new OAuth2Entity();
 
-        $cert= $this->getCertFromDnsName( $DnsName);
+        $cert= $this->getCertFromDnsName( $serverUri);
 
         $cryptKey = new CryptKey($cert, null, false);
         $OAuth2Prototype->setKey($cryptKey);
@@ -154,28 +150,13 @@ class EZAuth2Middleware implements MiddlewareInterface
                 $accessToken = $this->getAccessTokenFromOAuth2Server($queryParams['code']);
                 $session->set(self::OAUTH2_JWT_TOKEN, $accessToken->getToken());
                 $session->set(self::OAUTH2_REFRESH_TOKEN, $accessToken->getRefreshToken());
-                $actual_link = $session->get('requestedUrl');
+                $requestedUrl = $session->get('requestedUrl');
                 $session->remove('requestedUrl');
-                return $this->redirectToCleanUrl($request, $actual_link);
+                return new RedirectResponse( $requestedUrl );
             }
         }
 
-        // This is cheat and is un-testable.
-        // TODO: find a way to do with the way pipe works.
-        //$actual_link = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]";
-
-        $actual_link = $request->getUri();
-        $protocol = $request->getHeaders();
-
-        $schema = $request->getHeader('upgrade-insecure-requests')[0];
-        echo "\n\n";
-        echo $actual_link;
-        echo "\n\n";
-        //print_r($protocol);
-        echo "\n\n";
-        echo $schema;
-        echo "\n\n";
-        die;
+        $actual_link = $request->getUri()->__toString();
 
         $session->set('requestedUrl',$actual_link);
         $authorizationUrl = $this->provider->getAuthorizationUrl();
@@ -236,32 +217,6 @@ class EZAuth2Middleware implements MiddlewareInterface
         return $accessToken;
     }
 
-    private function redirectToCleanUrl(ServerRequestInterface $request,
-                                        $requestedUrl =  null)
-    {
-        if (isset($requestedUrl)) {
-            return new RedirectResponse( $requestedUrl );
-        }
-
-        $uri = $request->getUri();
-
-        $newUrl = $uri->getScheme()."://".$uri->getHost();
-        if (!empty($uri->getPort())) {
-            $newUrl .= ":" . $uri->getPort();
-        }
-
-        $params = $request->getQueryParams();
-
-        unset($params['code']);
-        unset($params['state']);
-
-        if (count($params)>0){
-            $newUrl = $newUrl . "?" . http_build_query($params);
-        }
-
-        return new RedirectResponse( $newUrl );
-    }
-
     private function getCertFromDnsName($name)
     {
         // https://stackoverflow.com/questions/3081042/how-to-get-ssl-certificate-info-with-curl-in-php
@@ -282,6 +237,11 @@ class EZAuth2Middleware implements MiddlewareInterface
                     )
             )
         );
+
+        if (empty($port)) {
+            $port=443;
+        }
+
         $r = stream_socket_client("ssl://{$host}:{$port}", $errno, $errstr, 30,
             STREAM_CLIENT_CONNECT, $g);
         $cont = stream_context_get_params($r);
