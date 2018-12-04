@@ -22,7 +22,7 @@ use League\OAuth2\Client\Token\AccessToken;
 use League\OAuth2\Client\Provider\GenericProvider;
 use Zend\Diactoros\Response\JsonResponse;
 use Zend\Diactoros\Response\RedirectResponse;
-use Psr\Log\LoggerInterface;
+use Zend\Diactoros\Uri;
 
 
 class EZAuth2Middleware implements MiddlewareInterface
@@ -155,6 +155,9 @@ class EZAuth2Middleware implements MiddlewareInterface
         }
 
         $actual_link = $request->getUri()->__toString();
+        if ($request->hasHeader('upgrade-insecure-requests')) {
+            $actual_link = $request->getUri()->withScheme('https')->__toString();
+        }
 
         $session->set('requestedUrl',$actual_link);
         $authorizationUrl = $this->provider->getAuthorizationUrl();
